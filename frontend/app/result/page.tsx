@@ -170,7 +170,7 @@ const PageContent: React.FC = () => {
   const handleFeedback = async () => {
     try {
       const updatedResponse = await axios.put(
-        `http://localhost:4000/api/update-result/${id}`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/update-result/${id}`,
         {Data, result: resultData}
       );
 

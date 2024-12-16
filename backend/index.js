@@ -589,8 +589,8 @@ app.post("/api/save-result", async (req, res) => {
   try {
 
  // Get the client IP address
- const clientIp =
- req.headers["x-forwarded-for"] || req.socket.remoteAddress;
+ const forwarded = req.headers["x-forwarded-for"];
+  const clientIp = forwarded ? forwarded.split(",")[0] : req.socket.remoteAddress;
 
  const resolvedIp = clientIp === "::1" ? "1.10.10.0" : clientIp;
  
