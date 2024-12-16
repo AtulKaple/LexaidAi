@@ -597,7 +597,7 @@ app.post("/api/save-result", async (req, res) => {
 
  const getLocationFromIp = async (ip) => {
   try {
-    const response = await axios.get(`https://ipinfo.io/${ip}/json`);
+    const response = await axios.get(`https://ipinfo.io/${ip}/json?token=${process.env.IPINFO_API_KEY}`);
     return response.data;
   } catch (error) {
     console.error("Error fetching location:", error);
