@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.number-input {
+  appearance: textfield;
+}
+
+.number-input::-webkit-outer-spin-button,
+.number-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* For Firefox */
+.number-input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.hello{
+  color: #60a5fa;
+}
+
+
+/* phone-input.css */
+.PhoneInputInput {
+  @apply w-full px-3   focus:outline-none bg-black text-white;
+}
+
+.PhoneInputCountry {
+  @apply border-none  bg-black text-white;
+}
+
+.PhoneInputCountrySelect {
+  @apply rounded-[10px] px-3 border border-white  bg-black text-white;
+}
