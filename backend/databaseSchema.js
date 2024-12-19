@@ -61,10 +61,10 @@ const ResultSchema = new mongoose.Schema({
     address: { type: String },
   },
   victim: {
-    firstName: { type: String, required: true },
-    familyName: { type: String, required: true },
-    dob: { type: String, required: true },
-    nationality: { type: String, required: true },
+    firstName: { type: String},
+    familyName: { type: String},
+    dob: { type: String},
+    nationality: { type: String},
   },
   countriesInvolved: {
     countries: { type: String, required: true },
