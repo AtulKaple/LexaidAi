@@ -247,7 +247,7 @@ const assessEligibility = async (applicantDetails, caseSummary, evidence) => {
        - Identify gaps or weaknesses in the evidence and provide recommendations for strengthening the case.
 
     3. **International Mechanism Recommendations**:
-       - Recommend appropriate international bodies (e.g., UN Human Rights Committee, Committee Against Torture, European Court of Human Rights) based on the case attributes and fulfilled legal criteria.
+       - Recommend appropriate international bodies (eg: Committee on the Elimination of Racial Discrimination, Committee on the Elimination of Discrimination against Women, Committee against Torture, Committee on the Rights of the Child, Committee on Enforced Disappearances (CED)) based on the case attributes and fulfilled legal criteria.
        - Provide specific reasons why a case qualifies for escalation to the recommended body or explain deficiencies if it does not.
 
     4. **Appeal Generation**:
@@ -268,7 +268,7 @@ const assessEligibility = async (applicantDetails, caseSummary, evidence) => {
     - **Case Eligibility**: Yes/No determination on whether a case can be escalated to the international level.
       - If Yes: Short explanation of which criteria are fulfilled and why.
       - If No: Short explanation of deficiencies and steps to improve eligibility.
-    - **Committee Recommendations**: List of suitable international committees or bodies for escalation, with reasons for their selection.
+    - **Committee Recommendations**: List of suitable international committees or bodies for escalation, with reasons for their selection (eg: Committee on the Elimination of Racial Discrimination, Committee on the Elimination of Discrimination against Women, Committee against Torture, Committee on the Rights of the Child, Committee on Enforced Disappearances (CED)).
 
     ### Your Role:
     Evaluate the following asylum case details and provide a structured response to determine its eligibility for escalation to the international level. Use your expertise in Swiss and international asylum laws to analyze the case comprehensively.
@@ -290,9 +290,9 @@ const assessEligibility = async (applicantDetails, caseSummary, evidence) => {
        - Evaluate the relevance and strength of the evidence and if less evidences are avilable declare Ineligible.
        - Highlight any gaps or inconsistencies.
     3. **Alignment with International Standards**:
-       - Determine whether the case meets non-refoulement and other human rights criteria under treaties such as the Geneva Convention and UNCAT.
+       - Determine whether the case meets non-refoulement and other human rights criteria under treaties such  as Committee on the Elimination of Racial Discrimination, Committee on the Elimination of Discrimination against Women, Committee against Torture, Committee on the Rights of the Child, Committee on Enforced Disappearances (CED).
     4. **Committee Recommendations**:
-       - Recommend appropriate international bodies for escalation.
+       - Recommend appropriate international bodies for escalation (eg: Committee on the Elimination of Racial Discrimination, Committee on the Elimination of Discrimination against Women, Committee against Torture, Committee on the Rights of the Child, Committee on Enforced Disappearances (CED)).
        - Provide reasons for the suitability of each recommended body.
     5. **Feedback for Improvement**:
        - Suggest steps to address deficiencies in ineligible cases.
@@ -393,7 +393,7 @@ const assessGeneratedAnswers = async (submissions, interimMeasures, facts) => {
     "sections": [
       {
         "name": "Section1",
-        "instruction": "Recommend only one appropriate international bodies (eg: Committee on the Elimination of Racial Discrimination, Committee on Economic, Social and Cultural Rights, Human Rights Committee, Committee on the Elimination of Discrimination against Women, Committee against Torture, Committee on the Rights of the Child, Committee on Migrant Workers, Subcommittee on Prevention of Torture and other Cruel, Inhuman or Degrading Treatment or Punishment, Committee on the Rights of Persons with Disabilities, Committee on Enforced Disappearances (CED)) based on the case attributes and fulfilled legal criteria. Select the relevant committee based on the case type and jurisdiction. Provide the exact name of the committee in one line without shortform .",
+        "instruction": "Recommend only one appropriate international bodies (eg: Committee on the Elimination of Racial Discrimination, Committee on the Elimination of Discrimination against Women, Committee against Torture, Committee on the Rights of the Child, Committee on Enforced Disappearances (CED)) based on the case attributes and fulfilled legal criteria. Select the relevant committee based on the case type and jurisdiction. Provide the exact name of the committee in one line without shortform .",
         "output": {
           "name_of_committee": []
         }
@@ -588,9 +588,9 @@ app.post("/api/save-result", async (req, res) => {
 
   try {
 
- // Get the client IP address
- const forwarded = req.headers["x-forwarded-for"];
-  const clientIp = forwarded ? forwarded.split(",")[0] : req.socket.remoteAddress;
+// Get the client IP address
+const forwarded = req.headers["x-forwarded-for"];
+const clientIp = forwarded ? forwarded.split(",")[0] : req.socket.remoteAddress;
 
  const resolvedIp = clientIp === "::1" ? "1.10.10.0" : clientIp;
  
