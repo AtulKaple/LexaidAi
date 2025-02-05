@@ -3,31 +3,17 @@ import cors from "cors";
 import dotenv from "dotenv";
 import axios from "axios";
 import multer from "multer";
-import { Case, Queries, Result } from "./databaseSchema.js";
+import { Case, Queries, Result, User } from "./databaseSchema.js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import connectDB from "./connectDB.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import cookieParser from "cookie-parser";
 dotenv.config();
 
-//OpenAI Code
-
-// import OpenAI from "openai";
-// const openai = new OpenAI({apiKey:""});
-
-// const completion = await openai.chat.completions.create({
-//     model: "gpt-4o-mini",
-//     messages: [
-//         { role: "system", content: "You are a helpful assistant." },
-//         {
-//             role: "user",
-//             content: "Write a haiku about recursion in programming.",
-//         },
-//     ],
-// });
-
-// console.log(completion.choices[0].message);
 
 // Connecting Database
 
@@ -39,6 +25,141 @@ const port = process.env.PORT || 3000;
 // Middleware
 app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
 app.use(express.json());
+app.use(cookieParser());
+
+// Signup Route
+app.post("/api/signup", async (req, res) => {
+  // console.log("Signup Request Body:", req.body); // Debugging
+  try {
+    const { name, email, password, location, userType } = req.body;
+
+    let user = await User.findOne({ email });
+    if (user) return res.status(400).json({ msg: "User already exists" });
+
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    user = new User({ name, email, password: hashedPassword, location, userType });
+    await user.save();
+
+    // ✅ Generate JWT Token
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "2d" });
+
+    res.status(201).json({
+      msg: "User registered successfully",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        location: user.location,
+        userType: user.userType,
+        token,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+// Login Route
+app.post("/api/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ msg: "Invalid email or password." });
+
+    // Compare password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(400).json({ msg: "Invalid email or password." });
+
+    // Generate JWT Token
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "2d" });
+
+    // ✅ Ensure `name` is included in the response for Zustand
+    res.json({
+      token,
+      user: {
+        id: user._id,
+        name: user.name, // Added name field
+        email: user.email,
+        location: user.location,
+        userType: user.userType,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/google-login", async (req, res) => {
+  try {
+    const { name, email, uid } = req.body;
+
+    let user = await User.findOne({ email });
+    if (!user) {
+      user = new User({ name, email, password: uid, location: "", userType: "Lawyer" });
+      await user.save();
+    }
+
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "2d" });
+
+    res.json({ token, user });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/save-reset-token', async (req, res) => {
+  const { email, resetToken } = req.body;
+
+  if (!email || !resetToken) {
+    return res.status(400).json({ message: "Missing required fields." });
+  }
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ message: "User not found." });
+    }
+
+    user.resetToken = resetToken; // ✅ Save token
+    await user.save();
+
+    return res.status(200).json({ message: "Reset token saved successfully." });
+  } catch (error) {
+    console.error("Error saving reset token:", error);
+    return res.status(500).json({ message: "Something went wrong. Please try again later." });
+  }
+});
+
+app.post('/api/reset-password', async (req, res) => {
+  const { token, newPassword } = req.body;
+
+  if (!token || !newPassword) {
+    return res.status(400).json({ message: "Missing required fields." });
+  }
+
+  try {
+    const user = await User.findOne({ resetToken: token });
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired token." });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10); // ✅ Hash the new password
+    user.resetToken = null; // ✅ Remove reset token after successful reset
+    await user.save();
+
+    return res.status(200).json({ message: "Password reset successfully." });
+  } catch (error) {
+    console.error("Error resetting password:", error);
+    return res.status(500).json({ message: "Something went wrong. Please try again later." });
+  }
+});
+
+
 
 app.get("/api/health", (req, res) => {
   res.status(200).json({ status: "OK", message: "Server is running!" });
@@ -95,7 +216,7 @@ const upload = multer({ storage });
 
 app.post("/api/upload", upload.array("files", 10), (req, res) => {
   try {
-    console.log("Uploaded Files:", req.files);
+    // console.log("Uploaded Files:", req.files);
 
     if (req.files.length === 0) {
       return res.status(400).json({ error: "No files uploaded" });
@@ -119,7 +240,7 @@ app.post("/api/upload", upload.array("files", 10), (req, res) => {
 
 // Endpoint for file upload and data submission
 app.post("/api/intake", upload.array("files", 10), async (req, res) => {
-  console.log("Files uploaded:", req.files);
+  // console.log("Files uploaded:", req.files);
   // res.json({ message: 'Files uploaded successfully!', files: req.files });
   const {
     name,
@@ -129,7 +250,6 @@ app.post("/api/intake", upload.array("files", 10), async (req, res) => {
     rejectionHistory,
     appealAttempts,
   } = req.body;
-  // console.log("Received Body:", req.body); // Logs form fields (should show name, country, etc.)
 
   // Parse eligibilityResponse if it's a string
   if (req.body.eligibilityResponse) {
@@ -142,9 +262,6 @@ app.post("/api/intake", upload.array("files", 10), async (req, res) => {
     }
   }
 
-  //   const aa= req.body.eligibilityResponse;
-  //   const  feedback =await aa.feedback;
-  // console.log(feedback);  // Now this will log the parsed object
 
   try {
     const files = await Promise.all(
@@ -173,11 +290,10 @@ app.post("/api/intake", upload.array("files", 10), async (req, res) => {
           status: req.body.eligibilityResponse.eligibility,
           feedback: req.body.eligibilityResponse.feedback,
         },
+        userId: req.body.userId,
       });
     }
 
-    // Clean up temporary files
-    // req.files.forEach((file) => fs.unlinkSync(file.path))
 
     res
       .status(200)
@@ -505,48 +621,6 @@ const assessGeneratedAnswers = async (submissions, interimMeasures, facts) => {
     }
   }`;
 
-  //   `
-  //    You are an advanced AI tasked with generating responses for a legal communication submission based on the provided details. Use the inputs below to draft responses for Sections 1, 9, 10, and 11 in the specified format. Be concise, professional, and adhere to the word limits for each section. The responses must be fact-based and logically derived from the inputs.
-
-  // ### Inputs:
-  // 1. **Prior Submissions**:
-  //    [${submissions}]
-
-  // 2. **Request for Interim Measures or Protection**:
-  //    [${interimMeasures}]
-
-  // 3. **Facts of the Case**:
-  //    [${facts}]
-
-  // ---
-
-  // ### **Your Task:**
-  // Generate responses for the following sections:
-
-  // 1. **Section 1: Name of Committee to which the communication is submitted:**
-  //    In one line, identify the most appropriate committee or authority to which this communication should be submitted. Base your selection on the provided facts and context.
-
-  // 2. **Section 9: Justification for Interim/Protective Measures:**
-  //    In a maximum of 400 words, justify the requested interim or protective measures. Clearly explain the nature of the harm or risks involved, and why the measures are necessary.
-
-  // 3. **Section 10: Facts:**
-  //    In a maximum of 2,500 words, provide a summary of the main facts of the case. Organize them in chronological order and include:
-  //    - Dates and events related to the case.
-  //    - Information about administrative and judicial remedies attempted domestically.
-  //    - Reasons for the outcomes of these remedies or why they were not exhausted, if applicable.
-
-  // 4. **Section 11: Supporting Details for Claims:**
-  //    In a maximum of 600 words, explain how the facts provided demonstrate a violation of rights. Specify which rights were violated and, if possible, identify the relevant articles under the applicable treaty.
-
-  // ---
-
-  // ### **Formatting Guidelines:**
-  // - Write in points where appropriate to ensure clarity.
-  // - Use a professional and legal tone.
-  // - Ensure all sections are logically consistent with the inputs.
-
-  // ### **Output Structure:**
-  // `;
 
   const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
@@ -557,8 +631,6 @@ const assessGeneratedAnswers = async (submissions, interimMeasures, facts) => {
     .replace("```javascript", "")
     .replace("```json", "")
     .replace("```", "");
-  console.log(result);
-  // console.log(JSON.parse(aa));
 
   // Parse the LLM response into a structured format
   return {
@@ -568,26 +640,19 @@ const assessGeneratedAnswers = async (submissions, interimMeasures, facts) => {
   };
 };
 
-// Basic in-memory cache for development (Replace with Redis for production)
-// const cache = new Map();
-
-// const getFromCache = async (key) => {
-//   return cache.get(key);
-// };
-
-// const saveToCache = async (key, value) => {
-//   cache.set(key, value);
-// };
-
 app.post("/api/save-result", async (req, res) => {
-  const { Data, result } = req.body;
+  const { Data, result,userId } = req.body;
+  // console.log("Received Body:", req.body); // Logs form fields (should show name, country, etc.)
 
-  if (!Data || !result) {
-    return res.status(400).json({ error: "Data and result are required!" });
+  if (!Data || !result || !userId) {
+    return res.status(400).json({ error: "Data, result and userId are required!" });
   }
 
   try {
 
+// Get the client IP address
+//  const clientIp =
+//  req.headers["x-forwarded-for"] || req.socket.remoteAddress;
 // Get the client IP address
 const forwarded = req.headers["x-forwarded-for"];
 const clientIp = forwarded ? forwarded.split(",")[0] : req.socket.remoteAddress;
@@ -613,6 +678,7 @@ const location = await getLocationFromIp(resolvedIp);
     const savedResult = await Result.create({
       ...Data, // Spread the fields from Data
       ...result, // Add the result section
+      userId: userId, // Save the user ID
       generatedAtIp: clientIp, // Save the IP address
       location: location || null, // Save the location information
     });
@@ -628,15 +694,24 @@ const location = await getLocationFromIp(resolvedIp);
   }
 });
 
+
 app.get("/api/results", async (req, res) => {
   try {
-    const results = await Result.find(); // Fetch all documents in the Result collection
-    res.status(200).json(results); // Return the results as JSON
+    const { userId } = req.query; // Get userId from query params
+
+    if (!userId) {
+      return res.status(400).json({ error: "User ID is required" });
+    }
+
+    const results = await Result.find({ userId }); // Filter results by userId
+
+    res.status(200).json(results);
   } catch (error) {
     console.error("Error fetching results:", error);
     res.status(500).json({ error: "Error fetching results from the database." });
   }
 });
+
 
 app.put("/api/update-result/:id", async (req, res) => {
   const { id } = req.params; // Get the unique ID of the result to update

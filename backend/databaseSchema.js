@@ -1,5 +1,17 @@
 import mongoose from "mongoose";
 
+const UserSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  location: { type: String },
+  userType: { type: String, enum: ["Lawyer", "Admin"], default: "Lawyer" },
+  resetToken: { type: String, default: null }, // Add reset token field
+}, { timestamps: true });
+
+const User = mongoose.model("User", UserSchema);
+export { User }
+
 const dataSchema = new mongoose.Schema({
   inputPrompt: {
     type: String,
@@ -43,6 +55,7 @@ const caseSchema = new mongoose.Schema({
     feedback: { type: [String], required: true },
     timestamp: { type: Date, default: Date.now },
   },
+  userId: { type: String, required: true },
   timestamp: { type: Date, default: Date.now },
 });
 
@@ -102,6 +115,7 @@ const ResultSchema = new mongoose.Schema({
       supporting_claims: [{ type: String }],
     },
   },
+  userId: { type: String, required: true },
   generatedAtIp: { type: String, required: true }, // New field for IP address
   timestamp: { type: Date, default: Date.now },
   location: { type: Object },
